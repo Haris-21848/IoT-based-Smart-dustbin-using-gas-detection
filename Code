@@ -1,0 +1,109 @@
+
+#define BLYNK_PRINT Serial
+#define BLYNK_TEMPLATE_ID           "TMPL6ca7K2oSU"
+#define BLYNK_TEMPLATE_NAME         "Gas leakage"
+#define BLYNK_AUTH_TOKEN            "lfpsds34AVIdSgYbXsfkFKBC9A5F1nmY"
+#define MQ4 32
+#define led 2
+#define trigger 27
+#define echo 26
+
+
+#include <ESP32Servo.h>
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+
+
+Servo servo_18;
+BlynkTimer timer;
+bool binfullsent=false;
+bool gasdetectsent=false;
+// Your WiFi credentials.
+// Set password to "" for open networks.
+char ssid[] = "Testing";
+char pass[] = "123409975743";
+
+void sendsensorValue()
+{
+  if(touchRead(T0)<=20&&!binfullsent)
+  {
+    Blynk.logEvent("bin_full","Bin full !");
+   
+    digitalWrite(led,HIGH);
+    binfullsent=true;
+  }
+  else if(touchRead(T0)>=30)
+  {
+    digitalWrite(led,LOW);
+    binfullsent=false;
+  }
+}
+void sendMq4Value()
+{
+   int value=analogRead(MQ4);
+  Blynk.virtualWrite(V0,value);
+  if(value>=400&&!gasdetectsent)
+  {
+    Blynk.logEvent("gas_leakage","Gas leakage detected !");
+   
+    gasdetectsent=true;
+  }
+  if(value<=350)
+  {
+    gasdetectsent=false;
+  }
+}
+
+void setup()
+{
+  // Debug console
+  Serial.begin(115200);
+  pinMode(trigger,OUTPUT);
+  pinMode(2,OUTPUT);
+  pinMode(echo,INPUT);
+  pinMode(MQ4,INPUT);
+  servo_18.attach(19);
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  timer.setInterval(2000L,sendMq4Value);
+  timer.setInterval(1500L,sendsensorValue);
+}
+
+void loop()
+{
+  
+  digitalWrite(trigger,0);
+  delayMicroseconds(3);
+  digitalWrite(trigger,HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigger,0);
+
+  //to find time between transmitter and receiver
+  long duration=pulseIn(echo,HIGH);
+  long distance=(duration/2)*0.0343;
+  
+  if(distance<=20&&distance>0)
+  {
+    
+    servo_18.write(90);
+    delay(2000);
+ 
+    servo_18.write(0);
+    delay(200);
+  }
+  else
+  {
+    servo_18.write(0);
+  }
+   Blynk.run();
+   timer.run();
+  
+}
+
+
+
+
+
+
+
+
